@@ -2,34 +2,45 @@
 <html>
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>love</title>
 <link href="favicon.ico" rel="shortcut icon" />
 <style>
 body{
   overflow: hidden;
   margin: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 h1{
   position: fixed;
   top: 50%;
   left: 0;
+  z-index: 1;
+  box-sizing: border-box;
   width: 100%;
   text-align: center;
   transform:translateY(-50%);
   font-family: 'Love Ya Like A Sister', cursive;
-  font-size: 40px;
+  font-size: clamp(24px, 4vw, 40px);
   color: #c70012;
   padding: 0 20px;
 }
 h1 span{
-    font-size:20px;
+    font-size: clamp(14px, 2vw, 20px);
+    line-height: 2.2;
+}
+canvas {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
 }
 </style>
 
 </head>
 <body>
 <div style="position:fixed; float:none; float:none; top:0px; margin:auto; ">
-  <iframe frameborder="no" border="0" marginwidth="0" marginheight="0" width=30% height=86 src="http://music.163.com/outchain/player?type=2&id=209909&auto=1&height=66"></iframe>
+  <iframe frameborder="no" border="0" marginwidth="0" marginheight="0" width=30% height=86 src="https://music.163.com/outchain/player?type=2&id=209909&auto=1&height=66"></iframe>
 </div>
 <!-- <iframe frameborder="no" border="0" marginwidth="0" marginheight="0" width=30% height=86 src="http://music.163.com/outchain/player?type=2&id=209909&auto=1&height=66"></iframe> -->
 <!-- <audio autoplay="autoplay" controls="controls"loop="loop" preload="auto"
@@ -43,104 +54,122 @@ h1 span{
 var canvas = document.querySelector("canvas"),
   ctx = canvas.getContext("2d");
 
-var ww,wh;
+var ww, wh, pixelRatio;
 
 function onResize(){
-  ww = canvas.width = window.innerWidth;
-  wh = canvas.height = window.innerHeight;
+  ww = window.innerWidth;
+  wh = window.innerHeight;
+  pixelRatio = Math.min(window.devicePixelRatio || 1, 1.5);
+  canvas.width = Math.round(ww * pixelRatio);
+  canvas.height = Math.round(wh * pixelRatio);
+  ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
 }
 
-ctx.strokeStyle = "red";
-ctx.shadowBlur = 25;
-ctx.shadowColor = "hsla(0, 100%, 60%,0.5)";
-
-var precision = 100;
 var hearts = [];
-var mouseMoved = false;
+var maxHearts = window.matchMedia("(max-width: 600px)").matches ? 55 : 90;
+var lastPointerSpawn = 0;
+
+function createHeartSprite(){
+  var sprite = document.createElement("canvas");
+  var spriteCtx = sprite.getContext("2d");
+  var size = 96;
+  sprite.width = size;
+  sprite.height = size;
+  spriteCtx.translate(size / 2, size / 2);
+  spriteCtx.scale(1.35, 1.35);
+  spriteCtx.fillStyle = "#ff5964";
+  spriteCtx.shadowBlur = 14;
+  spriteCtx.shadowColor = "rgba(255, 70, 80, 0.75)";
+  spriteCtx.beginPath();
+  for (var i = 0; i <= 40; i++) {
+    var step = (i / 40 - 0.5) * Math.PI * 2;
+    var x = 15 * Math.pow(Math.sin(step), 3);
+    var y = -(13 * Math.cos(step) - 5 * Math.cos(2 * step) - 2 * Math.cos(3 * step) - Math.cos(4 * step));
+    if (i === 0) {
+      spriteCtx.moveTo(x, y);
+    } else {
+      spriteCtx.lineTo(x, y);
+    }
+  }
+  spriteCtx.closePath();
+  spriteCtx.fill();
+  return sprite;
+}
+
+var heartSprite = createHeartSprite();
+
 function onMove(e){
-  mouseMoved = true;
-  if(e.type === "touchmove"){
-    hearts.push(new Heart(e.touches[0].clientX, e.touches[0].clientY));
-    hearts.push(new Heart(e.touches[0].clientX, e.touches[0].clientY));
+  var now = performance.now();
+  if (now - lastPointerSpawn < 24) {
+    return;
   }
-  else{
-    hearts.push(new Heart(e.clientX, e.clientY));
-    hearts.push(new Heart(e.clientX, e.clientY));
-  }
+  lastPointerSpawn = now;
+  addHeart(e.clientX, e.clientY);
+  addHeart(e.clientX, e.clientY);
 }
 
 var Heart = function(x,y){
-  this.x = x || Math.random()*ww;
-  this.y = y || Math.random()*wh;
-  this.size = Math.random()*2 + 1;
-  this.shadowBlur = Math.random() * 10;
-  this.speedX = (Math.random()+0.2-0.6) * 8;
-  this.speedY = (Math.random()+0.2-0.6) * 8;
-  this.speedSize = Math.random()*0.05 + 0.01;
+  this.x = typeof x === "number" ? x : Math.random() * ww;
+  this.y = typeof y === "number" ? y : Math.random() * wh;
+  this.size = Math.random() * 36 + 28;
+  this.speedX = (Math.random() - 0.5) * 4;
+  this.speedY = (Math.random() - 0.5) * 4;
+  this.life = 1;
+  this.fadeSpeed = Math.random() * 0.012 + 0.008;
   this.opacity = 1;
-  this.vertices = [];
-  for (var i = 0; i < precision; i++) {
-    var step = (i / precision - 0.5) * (Math.PI * 2);
-    var vector = {
-      x : (15 * Math.pow(Math.sin(step), 3)),
-      y : -(13 * Math.cos(step) - 5 * Math.cos(2 * step) - 2 * Math.cos(3 * step) - Math.cos(4 * step)) 
-    }
-    this.vertices.push(vector);
-  }
 }
 
 Heart.prototype.draw = function(){
-  this.size -= this.speedSize;
   this.x += this.speedX;
   this.y += this.speedY;
-  ctx.save();
-  ctx.translate(-1000,this.y);
-  ctx.scale(this.size, this.size);
-  ctx.beginPath();
-  for (var i = 0; i < precision; i++) {
-    var vector = this.vertices[i];
-    ctx.lineTo(vector.x, vector.y);
-  }
-  ctx.globalAlpha = this.size;
-  ctx.shadowBlur = Math.round((3 - this.size) * 10);
-  ctx.shadowColor = "hsla(0, 100%, 60%,0.5)";
-  ctx.shadowOffsetX = this.x + 1000;
-  ctx.globalCompositeOperation = "screen"
-  ctx.closePath();
-  ctx.fill()
-  ctx.restore();
+  this.life -= this.fadeSpeed;
+  var drawSize = this.size * Math.max(this.life, 0);
+  ctx.globalAlpha = Math.min(this.life * 1.4, 1);
+  ctx.drawImage(heartSprite, this.x - drawSize / 2, this.y - drawSize / 2, drawSize, drawSize);
 };
 
+function addHeart(x, y){
+  if (hearts.length >= maxHearts) {
+    hearts.shift();
+  }
+  hearts.push(new Heart(x, y));
+}
 
-function render(a){
+var frame = 0;
+function render(){
   requestAnimationFrame(render);
-
-  hearts.push(new Heart())
+  if (document.hidden) {
+    return;
+  }
+  frame++;
+  if (frame % 2 === 0) {
+    addHeart();
+  }
   ctx.clearRect(0,0,ww,wh);
   for (var i = 0; i < hearts.length; i++) {
     hearts[i].draw();
-    if(hearts[i].size <= 0){
+    if(hearts[i].life <= 0){
       hearts.splice(i,1);
       i--;
     }
   }
+  ctx.globalAlpha = 1;
 }
 
 
 onResize();
-window.addEventListener("mousemove", onMove);
-window.addEventListener("touchmove", onMove);
+window.addEventListener("pointermove", onMove, { passive: true });
 window.addEventListener("resize", onResize);
 requestAnimationFrame(render);
 
 window.onload=function starttime(){
-        time(h1,'2021,2,14');     // 在一起的时间
-        ptimer = setTimeout(starttime,1000); // 添加计时器
+        time(document.getElementById("h1"));     // 在一起的时间
+        window.setTimeout(starttime,1000); // 添加计时器
 }
 
-    function time(obj,futimg){
+    function time(obj){
         var nowtime = new Date().getTime(); // 现在时间转换为时间戳
-        var futruetime =  new Date(futimg).getTime(); // 未来时间转换为时间戳
+        var futruetime = new Date(2021, 1, 14, 0, 0, 0).getTime(); // 2021年2月14日（本地时间）
         var msec = nowtime-futruetime; // 毫秒 未来时间-现在时间
         var time = (msec/1000);  // 毫秒/1000
         var day = parseInt(time/86400); // 天  24*60*60*1000 
