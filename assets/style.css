@@ -1,0 +1,538 @@
+/* ── 纸与朱砂 ─────────────────────────────────────────────
+   这一页的底子是「一封摊在桌上的信」：宣纸色的纸片，朱砂色的字和数字，
+   飘着的心跳动画留在最底层。倒数日借了台历撕页的样子——纸的上沿有齿孔，
+   下面同时写着公历和农历，因为生日和节日在中文里本来就是两套历。*/
+
+:root{
+  --zhu:#c70012;                    /* 朱砂，标题与数字 */
+  --zhu-deep:#9d000e;
+  --yan:#ff5964;                    /* 胭脂，心的颜色 */
+  --xuan:#fffcfb;                   /* 宣纸，纸片 */
+  --bg:#fdf0ec;                     /* 桌面。要比纸深一点，纸才像纸、齿孔才像孔 */
+  --mo:#2b2320;                     /* 墨 */
+  --dan:#8a7b74;                    /* 淡墨，次要文字 */
+  --xian:rgba(199,0,18,.13);        /* 红丝线，分隔 */
+  --zhu-wash:rgba(199,0,18,.07);
+
+  --kai:"Kaiti SC","STKaiti",KaiTi,"楷体",TW-Kai,"Noto Serif SC",serif;
+  --hei:"PingFang SC","Hiragino Sans GB","Microsoft YaHei","微软雅黑",system-ui,-apple-system,sans-serif;
+
+  --paper:0 1px 0 rgba(199,0,18,.05), 0 12px 32px -14px rgba(160,20,40,.3);
+  --col:660px;
+}
+
+*{box-sizing:border-box}
+
+/* .view--home 设了 display:flex，类选择器压过了浏览器自带的 [hidden]{display:none}，
+   切视图时首页会赖着不走，所以这里把 hidden 抬成硬规则。*/
+[hidden]{display:none !important}
+
+html{-webkit-text-size-adjust:100%}
+
+body{
+  margin:0;
+  min-height:100vh;
+  min-height:100dvh;
+  background:var(--bg);
+  color:var(--mo);
+  font-family:var(--hei);
+  line-height:1.6;
+  overflow-x:hidden;
+}
+
+/* canvas 是替换元素，光写 inset:0 会退回它自己的 width/height 属性，
+   在 devicePixelRatio > 1 的屏幕上就被撑成一倍半大，心飘出屏幕外。
+   这里显式给百分比尺寸，位图再缩回视口。*/
+#hearts{
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  pointer-events:none;
+  z-index:0;
+}
+
+.player{
+  position:fixed;
+  top:0;
+  left:0;
+  z-index:4;
+  width:300px;
+  max-width:100vw;
+}
+.player iframe{display:block;width:100%;height:86px;border:0}
+
+main{position:relative;z-index:1}
+
+.view{
+  position:relative;
+  z-index:1;
+  padding:96px 20px calc(96px + env(safe-area-inset-bottom));
+}
+
+/* ── 我们 ───────────────────────────────────────────── */
+
+.view--home{
+  min-height:100vh;
+  min-height:100dvh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.hero{
+  display:block;
+  margin:0;
+  max-width:36ch;
+  text-align:center;
+  font-family:var(--kai);
+  font-weight:400;
+  color:var(--zhu);
+  font-size:clamp(24px,4vw,40px);
+  line-height:1.45;
+}
+.hero span{display:block}
+.hero__lead{margin-top:.15em}
+.hero__clock b{font-weight:400;font-variant-numeric:tabular-nums}
+.hero__letter{
+  margin-top:.9em;
+  font-size:clamp(14px,2vw,20px);
+  line-height:2.2;
+}
+
+/* ── 纸上的版面 ──────────────────────────────────────── */
+
+.sheet{max-width:var(--col);margin:0 auto}
+
+.sheet__top{
+  display:flex;
+  align-items:baseline;
+  gap:12px;
+  flex-wrap:wrap;
+  margin-bottom:4px;
+}
+.sheet__title{
+  margin:0;
+  font-family:var(--kai);
+  font-size:30px;
+  font-weight:400;
+  letter-spacing:.06em;
+  color:var(--zhu);
+}
+.sheet__acts{display:flex;gap:8px;margin-left:auto}
+.sheet__today{
+  margin:0 0 22px;
+  color:var(--dan);
+  font-size:13.5px;
+}
+
+/* ── 倒数日：撕页 ────────────────────────────────────── */
+
+.cal{
+  position:relative;
+  background:var(--xuan);
+  border-radius:3px;
+  box-shadow:var(--paper);
+  padding:34px 26px 24px;
+  margin-bottom:22px;
+  text-align:left;
+  width:100%;
+  border:0;
+  font:inherit;
+  color:inherit;
+  display:block;
+  cursor:pointer;
+}
+.cal::before{             /* 台历的齿孔 */
+  content:"";
+  position:absolute;
+  top:0;left:0;right:0;
+  height:9px;
+  background:radial-gradient(circle at 7px 1px, var(--bg) 0 4px, transparent 4.5px) 0 0/14px 9px repeat-x;
+}
+.cal__name{
+  font-family:var(--kai);
+  font-size:21px;
+  color:var(--mo);
+}
+.cal__name i{font-style:normal;margin-right:.35em}
+.cal__num{
+  display:flex;
+  align-items:baseline;
+  gap:.18em;
+  margin:6px 0 10px;
+  color:var(--zhu);
+  font-weight:700;
+  font-size:clamp(52px,13vw,84px);
+  line-height:1.05;
+  letter-spacing:-.03em;
+  font-variant-numeric:tabular-nums;
+}
+.cal__num small{font-size:20px;font-weight:500;letter-spacing:0}
+.cal__num.is-word{font-size:clamp(34px,8vw,52px);font-family:var(--kai);font-weight:400;letter-spacing:.04em}
+.cal__when{color:var(--dan);font-size:14px}
+.cal__when em{font-style:normal;color:var(--zhu-deep)}
+.cal__note{margin-top:8px;font-family:var(--kai);font-size:15px;color:var(--dan)}
+
+/* ── 倒数日：其余的排成一张单子 ───────────────────────── */
+
+.rows{
+  background:var(--xuan);
+  border-radius:3px;
+  box-shadow:var(--paper);
+  overflow:hidden;
+}
+.row{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  width:100%;
+  padding:15px 20px;
+  border:0;
+  border-top:1px solid var(--xian);
+  background:none;
+  font:inherit;
+  color:inherit;
+  text-align:left;
+  cursor:pointer;
+}
+.row:first-child{border-top:0}
+.row:hover,.row:focus-visible{background:var(--zhu-wash)}
+.row__emoji{font-size:19px;line-height:1;width:1.4em;text-align:center;flex:none}
+.row__main{min-width:0;flex:1}
+.row__name{font-family:var(--kai);font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row__when{color:var(--dan);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row__num{
+  flex:none;
+  color:var(--zhu);
+  font-weight:700;
+  font-size:24px;
+  font-variant-numeric:tabular-nums;
+  letter-spacing:-.02em;
+}
+.row__num small{font-size:12px;font-weight:500;margin-left:2px;letter-spacing:0}
+.row__num small:first-child,.cal__num small:first-child{margin-left:0;margin-right:.25em}
+.row__num.is-word{font-family:var(--kai);font-weight:400;font-size:17px;letter-spacing:.04em}
+
+/* ── 回忆：按年份串成一条 ────────────────────────────── */
+
+.year{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  margin:34px 0 18px;
+  color:var(--zhu);
+  font-family:var(--kai);
+  font-size:19px;
+  letter-spacing:.1em;
+}
+.year::after{content:"";flex:1;height:1px;background:var(--xian)}
+.year:first-child{margin-top:8px}
+
+.note{
+  display:block;
+  width:100%;
+  text-align:left;
+  border:0;
+  font:inherit;
+  color:inherit;
+  background:var(--xuan);
+  border-radius:3px;
+  box-shadow:var(--paper);
+  padding:20px 22px;
+  margin-bottom:16px;
+  cursor:pointer;
+}
+.note:hover,.note:focus-visible{box-shadow:0 1px 0 rgba(199,0,18,.05), 0 16px 34px -14px rgba(160,20,40,.38)}
+.note__date{color:var(--dan);font-size:12.5px}
+.note__date em{font-style:normal;color:var(--zhu-deep)}
+.note__title{
+  margin:2px 0 6px;
+  font-family:var(--kai);
+  font-size:20px;
+  color:var(--mo);
+}
+.note__text{
+  margin:0;
+  color:var(--dan);
+  font-size:14.5px;
+  line-height:1.85;
+  display:-webkit-box;
+  -webkit-line-clamp:3;
+  line-clamp:3;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+  white-space:pre-wrap;
+}
+.note__pics{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
+.note__pics img{
+  width:82px;height:82px;object-fit:cover;
+  border-radius:2px;background:var(--zhu-wash);
+}
+.note__more{
+  align-self:center;
+  color:var(--dan);
+  font-size:12.5px;
+}
+
+/* ── 读一篇 ──────────────────────────────────────────── */
+
+.read__date{color:var(--dan);font-size:13px}
+.read__date em{font-style:normal;color:var(--zhu-deep)}
+.read__title{
+  margin:4px 0 16px;
+  font-family:var(--kai);
+  font-weight:400;
+  font-size:26px;
+  color:var(--zhu);
+}
+.read__text{
+  margin:0;
+  font-family:var(--kai);
+  font-size:17px;
+  line-height:2.05;
+  white-space:pre-wrap;
+  word-break:break-word;
+}
+.read__pics{display:grid;gap:10px;margin-top:20px}
+.read__pics img{width:100%;border-radius:2px;display:block;background:var(--zhu-wash)}
+
+/* ── 空状态 ──────────────────────────────────────────── */
+
+.empty{
+  background:var(--xuan);
+  border-radius:3px;
+  box-shadow:var(--paper);
+  padding:40px 26px;
+  text-align:center;
+  font-family:var(--kai);
+  font-size:17px;
+  color:var(--dan);
+}
+.empty b{display:block;color:var(--mo);font-weight:400;font-size:19px;margin-bottom:6px}
+
+/* ── 底部的三个字 ────────────────────────────────────── */
+
+/* 居中不要用 left:50% + translateX(-50%)：那样元素的可用宽度只剩视口的一半，
+   窄屏上「倒数日」三个字会被挤成竖排。左右都钉住再 margin auto 才是对的。*/
+.nav{
+  position:fixed;
+  left:0;
+  right:0;
+  bottom:calc(16px + env(safe-area-inset-bottom));
+  width:fit-content;
+  margin-inline:auto;
+  z-index:5;
+  display:flex;
+  align-items:center;
+  gap:2px;
+  padding:5px;
+  background:rgba(255,252,251,.94);
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+  border-radius:999px;
+  box-shadow:0 2px 6px rgba(160,20,40,.08), 0 14px 34px -12px rgba(160,20,40,.4);
+}
+.nav__tab{
+  border:0;
+  background:none;
+  font-family:var(--kai);
+  font-size:16px;
+  letter-spacing:.08em;
+  color:var(--dan);
+  padding:8px 20px;
+  border-radius:999px;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.nav__tab.is-on{background:var(--zhu-wash);color:var(--zhu)}
+.nav__gear{
+  border:0;background:none;color:var(--dan);
+  padding:8px 12px 8px 10px;cursor:pointer;
+  display:flex;align-items:center;
+  border-left:1px solid var(--xian);margin-left:4px;
+}
+.nav__gear:hover,.nav__tab:hover{color:var(--zhu)}
+
+/* ── 按钮 ────────────────────────────────────────────── */
+
+.btn{
+  border:1px solid transparent;
+  border-radius:999px;
+  padding:7px 16px;
+  font-family:var(--hei);
+  font-size:13.5px;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.btn--solid{background:var(--zhu);color:#fff}
+.btn--solid:hover{background:var(--zhu-deep)}
+.btn--ghost{background:none;color:var(--zhu);border-color:var(--xian)}
+.btn--ghost:hover{background:var(--zhu-wash)}
+.btn--danger{background:none;color:var(--dan);border-color:var(--xian)}
+.btn--danger:hover{color:var(--zhu);border-color:var(--zhu)}
+.btn[disabled]{opacity:.5;cursor:default}
+.btn input[type=file]{display:none}
+
+/* ── 弹层 ────────────────────────────────────────────── */
+
+.modal{
+  border:0;
+  padding:0;
+  background:none;
+  max-width:min(480px,calc(100vw - 28px));
+  width:100%;
+  color:var(--mo);
+}
+.modal--wide{max-width:min(620px,calc(100vw - 28px))}
+.modal::backdrop{background:rgba(72,30,34,.34);backdrop-filter:blur(2px)}
+.modal__box{
+  background:var(--xuan);
+  border-radius:4px;
+  padding:26px 26px 20px;
+  box-shadow:0 30px 70px -20px rgba(120,10,30,.5);
+  max-height:88vh;
+  overflow:auto;
+}
+.modal__title{
+  margin:0 0 4px;
+  font-family:var(--kai);
+  font-weight:400;
+  font-size:23px;
+  color:var(--zhu);
+}
+.modal__sub{margin:0 0 18px;color:var(--dan);font-size:13px}
+.modal__title + .field,.modal__title + .presets,.modal__title + .howto{margin-top:18px}
+.modal__err{
+  margin:14px 0 0;
+  padding:9px 12px;
+  background:var(--zhu-wash);
+  border-radius:3px;
+  color:var(--zhu-deep);
+  font-size:13px;
+}
+.modal__foot{display:flex;align-items:center;gap:8px;margin-top:22px}
+.spacer{flex:1}
+
+.field{display:block;margin-bottom:16px;border:0;padding:0;min-width:0}
+.field__label{
+  display:block;
+  margin-bottom:6px;
+  font-size:12.5px;
+  color:var(--dan);
+  padding:0;
+}
+.field__hint{margin:6px 0 0;font-size:12px;color:var(--dan);line-height:1.6}
+.field input[type=text],
+.field input[type=password],
+.field input[type=number],
+.field input[type=date],
+.field select,
+.field textarea{
+  width:100%;
+  border:1px solid var(--xian);
+  border-radius:3px;
+  background:#fff;
+  padding:9px 11px;
+  font-family:var(--hei);
+  font-size:15px;
+  color:var(--mo);
+}
+.field textarea{font-family:var(--kai);font-size:16px;line-height:1.9;resize:vertical}
+.field input:focus,.field select:focus,.field textarea:focus{
+  outline:2px solid var(--yan);
+  outline-offset:1px;
+  border-color:transparent;
+}
+
+.date-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.date-row .date-y{flex:1.6;min-width:110px}
+.date-row .date-s{flex:1;min-width:74px}
+
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{position:relative;cursor:pointer}
+.chip input{position:absolute;opacity:0;width:0;height:0}
+.chip span{
+  display:block;
+  padding:6px 14px;
+  border:1px solid var(--xian);
+  border-radius:999px;
+  font-size:13.5px;
+  color:var(--dan);
+}
+.chip input:checked + span{background:var(--zhu);border-color:var(--zhu);color:#fff}
+.chip input:focus-visible + span{outline:2px solid var(--yan);outline-offset:2px}
+.chip--inline span{font-size:13px}
+
+.presets{display:flex;flex-wrap:wrap;gap:7px}
+
+.picker{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.thumbs{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.thumb{position:relative;width:88px;height:88px}
+.thumb img{width:100%;height:100%;object-fit:cover;border-radius:2px;display:block}
+.thumb button{
+  position:absolute;top:-7px;right:-7px;
+  width:22px;height:22px;border-radius:999px;
+  border:0;background:var(--zhu);color:#fff;
+  font-size:14px;line-height:1;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+}
+.thumb.is-busy img{opacity:.45}
+
+.howto{
+  border:1px solid var(--xian);
+  border-radius:3px;
+  padding:10px 14px;
+  font-size:13px;
+  color:var(--dan);
+  line-height:1.85;
+}
+.howto summary{cursor:pointer;color:var(--zhu);font-size:13.5px}
+.howto ol{margin:10px 0 6px;padding-left:20px}
+.howto p{margin:6px 0 0}
+.howto code{background:var(--zhu-wash);padding:1px 5px;border-radius:2px;font-size:12px}
+.howto a{color:var(--zhu)}
+.howto b{color:var(--mo);font-weight:600}
+
+/* ── 提示条 ──────────────────────────────────────────── */
+
+.toast{
+  position:fixed;
+  left:0;
+  right:0;
+  bottom:calc(86px + env(safe-area-inset-bottom));
+  width:fit-content;
+  margin-inline:auto;
+  z-index:20;
+  max-width:calc(100vw - 32px);
+  padding:10px 18px;
+  border-radius:999px;
+  background:var(--mo);
+  color:#fff8f5;
+  font-size:13.5px;
+  box-shadow:0 14px 34px -12px rgba(0,0,0,.5);
+}
+.toast.is-bad{background:var(--zhu-deep)}
+
+/* ── 焦点与动效 ──────────────────────────────────────── */
+
+:focus-visible{outline:2px solid var(--yan);outline-offset:2px}
+.cal:focus-visible,.note:focus-visible,.row:focus-visible{outline-offset:-2px}
+
+@media (prefers-reduced-motion:no-preference){
+  .btn,.row,.note,.nav__tab,.chip span{transition:background-color .15s, color .15s, box-shadow .2s}
+}
+
+/* ── 小屏 ────────────────────────────────────────────── */
+
+@media (max-width:640px){
+  .view{padding:92px 14px calc(92px + env(safe-area-inset-bottom))}
+  .player{width:100vw}
+  .player iframe{height:72px}
+  .sheet__title{font-size:26px}
+  .sheet__acts{width:100%;margin-left:0}
+  .cal{padding:30px 20px 20px}
+  .modal__box{padding:22px 18px 16px}
+  .nav__tab{padding:8px 15px;font-size:15px}
+}

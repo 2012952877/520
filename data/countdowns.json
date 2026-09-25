@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "seed.zaiyiqi",
+      "title": "在一起",
+      "emoji": "💞",
+      "kind": "countup",
+      "calendar": "solar",
+      "y": 2021,
+      "m": 2,
+      "d": 14,
+      "note": "2021 年 2 月 14 日"
+    },
+    {
+      "id": "seed.jinian",
+      "title": "恋爱纪念日",
+      "emoji": "💍",
+      "kind": "yearly",
+      "calendar": "solar",
+      "y": 2021,
+      "m": 2,
+      "d": 14,
+      "note": ""
+    }
+  ],
+  "hiddenPresets": []
+}

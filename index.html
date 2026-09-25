@@ -1,188 +1,259 @@
 <!doctype html>
-<html>
+<html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#fdf0ec">
 <title>love</title>
 <link href="favicon.ico" rel="shortcut icon" />
-<style>
-body{
-  overflow: hidden;
-  margin: 0;
-  min-height: 100vh;
-  min-height: 100dvh;
-}
-h1{
-  position: fixed;
-  top: 50%;
-  left: 0;
-  z-index: 1;
-  box-sizing: border-box;
-  width: 100%;
-  text-align: center;
-  transform:translateY(-50%);
-  font-family: 'Love Ya Like A Sister', cursive;
-  font-size: clamp(24px, 4vw, 40px);
-  color: #c70012;
-  padding: 0 20px;
-}
-h1 span{
-    font-size: clamp(14px, 2vw, 20px);
-    line-height: 2.2;
-}
-canvas {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-}
-</style>
-
+<link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<div style="position:fixed; float:none; float:none; top:0px; margin:auto; ">
-  <iframe frameborder="no" border="0" marginwidth="0" marginheight="0" width=30% height=86 src="https://music.163.com/outchain/player?type=2&id=209909&auto=1&height=66"></iframe>
+
+<canvas id="hearts" aria-hidden="true"></canvas>
+
+<div class="player">
+  <iframe title="背景音乐" frameborder="no" border="0" marginwidth="0" marginheight="0" width="300" height="86" src="https://music.163.com/outchain/player?type=2&id=209909&auto=1&height=66"></iframe>
 </div>
-<!-- <iframe frameborder="no" border="0" marginwidth="0" marginheight="0" width=30% height=86 src="http://music.163.com/outchain/player?type=2&id=209909&auto=1&height=66"></iframe> -->
-<!-- <audio autoplay="autoplay" controls="controls"loop="loop" preload="auto"
-            	src="https://api.imjad.cn/cloudmusic/?type=song&id=209909&br=128000">
-</audio> -->
 
-<h1 id="h1"></h1>
-<canvas></canvas> 
+<main>
 
-<script>
-var canvas = document.querySelector("canvas"),
-  ctx = canvas.getContext("2d");
+<!-- ───────────────────────── 我们 ───────────────────────── -->
+<section class="view view--home" id="view-home">
+  <h1 class="hero">
+    <span class="hero__hail">亲爱的饼饼宝贝！</span>
+    <span class="hero__lead">咱俩在一起的时间已经：</span>
+    <span class="hero__clock">
+      <b id="c-day">0</b>天<b id="c-hour">0</b>小时<b id="c-min">0</b>分<b id="c-sec">0</b>秒了
+    </span>
+    <span class="hero__letter">
+      能够遇见你是我最大的幸运！<br>
+      有了你生活变得丰富多彩，<br>
+      有了你世界变得如此迷人，<br>
+      中间的计时器将永远见证我们爱过的岁月。<br>
+      你是我的世界，我的世界是你,<br>
+      对我来说，不是在最美好的时光遇见你，<br>
+      而是遇见你后都是最美好的时光！
+    </span>
+  </h1>
+</section>
 
-var ww, wh, pixelRatio;
+<!-- ───────────────────────── 倒数日 ───────────────────────── -->
+<section class="view" id="view-days" hidden>
+  <div class="sheet">
+    <div class="sheet__top">
+      <h2 class="sheet__title">倒数日</h2>
+      <div class="sheet__acts">
+        <button type="button" class="btn btn--ghost" id="days-presets">节日</button>
+        <button type="button" class="btn btn--solid" id="days-add">记一个日子</button>
+      </div>
+    </div>
+    <p class="sheet__today" id="days-today"></p>
+    <div id="days-feature"></div>
+    <div id="days-list"></div>
+  </div>
+</section>
 
-function onResize(){
-  ww = window.innerWidth;
-  wh = window.innerHeight;
-  pixelRatio = Math.min(window.devicePixelRatio || 1, 1.5);
-  canvas.width = Math.round(ww * pixelRatio);
-  canvas.height = Math.round(wh * pixelRatio);
-  ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
-}
+<!-- ───────────────────────── 回忆 ───────────────────────── -->
+<section class="view" id="view-notes" hidden>
+  <div class="sheet">
+    <div class="sheet__top">
+      <h2 class="sheet__title">回忆</h2>
+      <div class="sheet__acts">
+        <button type="button" class="btn btn--solid" id="notes-add">写一篇</button>
+      </div>
+    </div>
+    <div id="notes-list"></div>
+  </div>
+</section>
 
-var hearts = [];
-var maxHearts = window.matchMedia("(max-width: 600px)").matches ? 55 : 90;
-var lastPointerSpawn = 0;
+</main>
 
-function createHeartSprite(){
-  var sprite = document.createElement("canvas");
-  var spriteCtx = sprite.getContext("2d");
-  var size = 96;
-  sprite.width = size;
-  sprite.height = size;
-  spriteCtx.translate(size / 2, size / 2);
-  spriteCtx.scale(1.35, 1.35);
-  spriteCtx.fillStyle = "#ff5964";
-  spriteCtx.shadowBlur = 14;
-  spriteCtx.shadowColor = "rgba(255, 70, 80, 0.75)";
-  spriteCtx.beginPath();
-  for (var i = 0; i <= 40; i++) {
-    var step = (i / 40 - 0.5) * Math.PI * 2;
-    var x = 15 * Math.pow(Math.sin(step), 3);
-    var y = -(13 * Math.cos(step) - 5 * Math.cos(2 * step) - 2 * Math.cos(3 * step) - Math.cos(4 * step));
-    if (i === 0) {
-      spriteCtx.moveTo(x, y);
-    } else {
-      spriteCtx.lineTo(x, y);
-    }
-  }
-  spriteCtx.closePath();
-  spriteCtx.fill();
-  return sprite;
-}
+<nav class="nav" id="nav" aria-label="页面">
+  <button type="button" class="nav__tab is-on" data-go="home">我们</button>
+  <button type="button" class="nav__tab" data-go="days">倒数日</button>
+  <button type="button" class="nav__tab" data-go="notes">回忆</button>
+  <button type="button" class="nav__gear" id="open-settings" aria-label="设置">
+    <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path fill="currentColor" d="M12 15.5A3.5 3.5 0 1 1 15.5 12 3.5 3.5 0 0 1 12 15.5m7.43-2.53a7.7 7.7 0 0 0 0-1.94l2.03-1.58a.5.5 0 0 0 .12-.62l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.4 7.4 0 0 0-1.68-.97l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54a7.4 7.4 0 0 0-1.68.97l-2.39-.96a.5.5 0 0 0-.6.22L2.42 8.83a.5.5 0 0 0 .12.62l2.03 1.58a7.7 7.7 0 0 0 0 1.94l-2.03 1.58a.5.5 0 0 0-.12.62l1.92 3.32a.5.5 0 0 0 .6.22l2.39-.96a7.4 7.4 0 0 0 1.68.97l.36 2.54a.5.5 0 0 0 .5.42h3.84a.5.5 0 0 0 .5-.42l.36-2.54a7.4 7.4 0 0 0 1.68-.97l2.39.96a.5.5 0 0 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.62Z"/></svg>
+  </button>
+</nav>
 
-var heartSprite = createHeartSprite();
+<!-- ───────────────────────── 弹层 ───────────────────────── -->
 
-function onMove(e){
-  var now = performance.now();
-  if (now - lastPointerSpawn < 24) {
-    return;
-  }
-  lastPointerSpawn = now;
-  addHeart(e.clientX, e.clientY);
-  addHeart(e.clientX, e.clientY);
-}
+<dialog class="modal" id="dlg-day">
+  <form method="dialog" class="modal__box" id="form-day">
+    <h3 class="modal__title" id="dlg-day-title">记一个日子</h3>
 
-var Heart = function(x,y){
-  this.x = typeof x === "number" ? x : Math.random() * ww;
-  this.y = typeof y === "number" ? y : Math.random() * wh;
-  this.size = Math.random() * 36 + 28;
-  this.speedX = (Math.random() - 0.5) * 4;
-  this.speedY = (Math.random() - 0.5) * 4;
-  this.life = 1;
-  this.fadeSpeed = Math.random() * 0.012 + 0.008;
-  this.opacity = 1;
-}
+    <label class="field">
+      <span class="field__label">叫什么</span>
+      <input type="text" id="f-title" maxlength="20" required placeholder="饼饼生日">
+    </label>
 
-Heart.prototype.draw = function(){
-  this.x += this.speedX;
-  this.y += this.speedY;
-  this.life -= this.fadeSpeed;
-  var drawSize = this.size * Math.max(this.life, 0);
-  ctx.globalAlpha = Math.min(this.life * 1.4, 1);
-  ctx.drawImage(heartSprite, this.x - drawSize / 2, this.y - drawSize / 2, drawSize, drawSize);
-};
+    <label class="field">
+      <span class="field__label">配个表情</span>
+      <input type="text" id="f-emoji" maxlength="4" placeholder="🎂">
+    </label>
 
-function addHeart(x, y){
-  if (hearts.length >= maxHearts) {
-    hearts.shift();
-  }
-  hearts.push(new Heart(x, y));
-}
+    <fieldset class="field">
+      <legend class="field__label">怎么重复</legend>
+      <div class="chips" id="f-kind">
+        <label class="chip"><input type="radio" name="kind" value="yearly" checked><span>每年</span></label>
+        <label class="chip"><input type="radio" name="kind" value="once"><span>只此一次</span></label>
+        <label class="chip"><input type="radio" name="kind" value="weekly"><span>每周</span></label>
+        <label class="chip"><input type="radio" name="kind" value="countup"><span>往上数天数</span></label>
+      </div>
+    </fieldset>
 
-var frame = 0;
-function render(){
-  requestAnimationFrame(render);
-  if (document.hidden) {
-    return;
-  }
-  frame++;
-  if (frame % 2 === 0) {
-    addHeart();
-  }
-  ctx.clearRect(0,0,ww,wh);
-  for (var i = 0; i < hearts.length; i++) {
-    hearts[i].draw();
-    if(hearts[i].life <= 0){
-      hearts.splice(i,1);
-      i--;
-    }
-  }
-  ctx.globalAlpha = 1;
-}
+    <fieldset class="field" id="f-cal-wrap">
+      <legend class="field__label">按哪个历</legend>
+      <div class="chips" id="f-cal">
+        <label class="chip"><input type="radio" name="cal" value="solar" checked><span>公历</span></label>
+        <label class="chip"><input type="radio" name="cal" value="lunar"><span>农历</span></label>
+      </div>
+    </fieldset>
 
+    <div class="field" id="f-date-wrap">
+      <span class="field__label">哪一天</span>
+      <div class="date-row" id="f-solar-row">
+        <input type="number" id="f-y" min="1900" max="2100" placeholder="年（可不填）" class="date-y">
+        <input type="number" id="f-m" min="1" max="12" placeholder="月" required class="date-s">
+        <input type="number" id="f-d" min="1" max="31" placeholder="日" required class="date-s">
+      </div>
+      <div class="date-row" id="f-lunar-row" hidden>
+        <input type="number" id="f-ly" min="1900" max="2100" placeholder="年（可不填）" class="date-y">
+        <select id="f-lm" class="date-s"></select>
+        <select id="f-ld" class="date-s"></select>
+        <label class="chip chip--inline"><input type="checkbox" id="f-leap"><span>闰月</span></label>
+      </div>
+      <p class="field__hint" id="f-date-hint">生日不想让人知道年份，年可以空着。</p>
+    </div>
 
-onResize();
-window.addEventListener("pointermove", onMove, { passive: true });
-window.addEventListener("resize", onResize);
-requestAnimationFrame(render);
+    <fieldset class="field" id="f-week-wrap" hidden>
+      <legend class="field__label">星期几</legend>
+      <div class="chips" id="f-week"></div>
+    </fieldset>
 
-window.onload=function starttime(){
-        time(document.getElementById("h1"));     // 在一起的时间
-        window.setTimeout(starttime,1000); // 添加计时器
-}
+    <label class="field">
+      <span class="field__label">备注</span>
+      <input type="text" id="f-note" maxlength="40" placeholder="可以不写">
+    </label>
 
-    function time(obj){
-        var nowtime = new Date().getTime(); // 现在时间转换为时间戳
-        var futruetime = new Date(2021, 1, 14, 0, 0, 0).getTime(); // 2021年2月14日（本地时间）
-        var msec = nowtime-futruetime; // 毫秒 未来时间-现在时间
-        var time = (msec/1000);  // 毫秒/1000
-        var day = parseInt(time/86400); // 天  24*60*60*1000 
-        var hour = parseInt(time/3600)-24*day;    // 小时 60*60 总小时数-过去的小时数=现在的小时数 
-        var minute = parseInt(time%3600/60); // 分 -(day*24) 以60秒为一整份 取余 剩下秒数 秒数/60 就是分钟数
-        var second = parseInt(time%60);  // 以60秒为一整份 取余 剩下秒数
-//              console.log(hour+":"+minute+":"+second)
-//              alert(hour)
-        obj.innerHTML="亲爱的饼饼宝贝！<br>咱俩在一起的时间已经：<br>"+day+"天"+hour+"小时"+minute+"分"+second+"秒"+"了<br><span>能够遇见你是我最大的幸运！<br>有了你生活变得丰富多彩，<br>有了你世界变得如此迷人，<br>中间的计时器将永远见证我们爱过的岁月。<br>你是我的世界，我的世界是你,<br>对我来说，不是在最美好的时光遇见你，<br>而是遇见你后都是最美好的时光！</span>"
+    <p class="modal__err" id="day-err" hidden></p>
 
-        return true;
-    }
-</script>
+    <div class="modal__foot">
+      <button type="button" class="btn btn--danger" id="day-delete" hidden>删掉</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn btn--ghost" data-close>取消</button>
+      <button type="submit" class="btn btn--solid" id="day-save">保存</button>
+    </div>
+  </form>
+</dialog>
 
+<dialog class="modal" id="dlg-presets">
+  <div class="modal__box">
+    <h3 class="modal__title">内置节日</h3>
+    <p class="modal__sub">不想看的关掉就行，农历节日每年会自己换算成公历。</p>
+    <div id="presets-list" class="presets"></div>
+    <div class="modal__foot">
+      <span class="spacer"></span>
+      <button type="button" class="btn btn--solid" data-close>好了</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog class="modal modal--wide" id="dlg-note">
+  <form method="dialog" class="modal__box" id="form-note">
+    <h3 class="modal__title" id="dlg-note-title">写一篇</h3>
+
+    <label class="field">
+      <span class="field__label">哪一天</span>
+      <input type="date" id="n-date" required>
+    </label>
+
+    <label class="field">
+      <span class="field__label">标题</span>
+      <input type="text" id="n-title" maxlength="40" required placeholder="今天的月亮">
+    </label>
+
+    <label class="field">
+      <span class="field__label">写点什么</span>
+      <textarea id="n-text" rows="7" placeholder="想到什么写什么。"></textarea>
+    </label>
+
+    <div class="field">
+      <span class="field__label">照片</span>
+      <div class="picker">
+        <label class="btn btn--ghost">
+          选图片
+          <input type="file" id="n-files" accept="image/*" multiple hidden>
+        </label>
+        <span class="field__hint">会自动压到 1600 像素以内再上传。</span>
+      </div>
+      <div class="thumbs" id="n-thumbs"></div>
+    </div>
+
+    <p class="modal__err" id="note-err" hidden></p>
+
+    <div class="modal__foot">
+      <button type="button" class="btn btn--danger" id="note-delete" hidden>删掉</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn btn--ghost" data-close>取消</button>
+      <button type="submit" class="btn btn--solid" id="note-save">保存</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="modal modal--wide" id="dlg-read">
+  <div class="modal__box">
+    <div class="read" id="read-body"></div>
+    <div class="modal__foot">
+      <button type="button" class="btn btn--ghost" id="read-edit" hidden>改一改</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn btn--solid" data-close>合上</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog class="modal" id="dlg-settings">
+  <div class="modal__box">
+    <h3 class="modal__title">设置</h3>
+    <p class="modal__sub" id="set-state"></p>
+
+    <label class="field">
+      <span class="field__label">GitHub token</span>
+      <input type="password" id="set-token" placeholder="github_pat_…" autocomplete="off">
+      <p class="field__hint">
+        只有要新增 / 修改内容时才需要。填一次就记住，只存在这台设备上，不会写进网页源码。
+      </p>
+    </label>
+
+    <details class="howto">
+      <summary>怎么弄一个 token</summary>
+      <ol>
+        <li>打开 <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com/settings/personal-access-tokens/new</a></li>
+        <li>Repository access 选 <b>Only select repositories</b>，勾上 <b>2012952877/520</b></li>
+        <li>Permissions → Repository permissions → <b>Contents</b> 改成 <b>Read and write</b></li>
+        <li>生成后把 <code>github_pat_</code> 开头那串粘到上面</li>
+      </ol>
+      <p>这个 token 只能动这一个仓库，过期了再发一个就行。</p>
+    </details>
+
+    <p class="modal__err" id="set-err" hidden></p>
+
+    <div class="modal__foot">
+      <button type="button" class="btn btn--danger" id="set-forget" hidden>忘掉 token</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn btn--ghost" data-close>关闭</button>
+      <button type="button" class="btn btn--solid" id="set-save">存下来</button>
+    </div>
+  </div>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="assets/lunar.js"></script>
+<script src="assets/days.js"></script>
+<script src="assets/store.js"></script>
+<script src="assets/app.js"></script>
 </body>
 </html>
