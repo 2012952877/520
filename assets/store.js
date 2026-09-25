@@ -57,20 +57,59 @@
     return !!getToken();
   }
 
-  // 验证 token 是否真的能写这个仓库
+  /* 把 GitHub 的英文报错换成能照着做的话 */
+  function friendly(status, message) {
+    var m = String(message || '');
+    if (status === 401 || /bad credentials/i.test(m)) {
+      return 'token 无效或已经过期了，去设置里换一个新的';
+    }
+    if (/not accessible by personal access token/i.test(m) || status === 403) {
+      return 'token 的 Contents 权限不是 Read and write。去 github.com/settings/tokens?type=beta ' +
+             '点开这个 token → Repository permissions → Contents 改成 Read and write';
+    }
+    if (status === 404) {
+      return 'token 里没有勾上 ' + REPO_OWNER + '/' + REPO_NAME + ' 这个仓库';
+    }
+    return m || ('GitHub 返回 ' + status);
+  }
+
+  /* 真的试着写一次，但故意给一个不可能匹配的 sha —— GitHub 会在校验 sha 之前
+     先查权限，所以有权限时返回 409「sha 不匹配」，没权限时返回 403/404，
+     两种情况都不会产生任何提交。
+     不能只看 GET /repos 的 permissions.push：那反映的是**用户本人**在仓库里的
+     角色，跟 fine-grained token 被授予了什么权限是两回事，只读的 token 也会是 true。*/
+  function probeWrite(token) {
+    var FAKE_SHA = '0000000000000000000000000000000000000000';
+    return fetch(API + '/repos/' + REPO_OWNER + '/' + REPO_NAME + '/contents/?ref=' + BRANCH, {
+      headers: ghHeaders(token), cache: 'no-store'
+    }).then(function (res) {
+      if (!res.ok) throw new Error(friendly(res.status, ''));
+      return res.json();
+    }).then(function (list) {
+      var file = (list || []).filter(function (x) { return x.type === 'file'; })[0];
+      if (!file) return true;   // 空仓库，探不了，放行
+      return fetch(API + '/repos/' + REPO_OWNER + '/' + REPO_NAME + '/contents/' + file.path, {
+        method: 'PUT',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, ghHeaders(token)),
+        body: JSON.stringify({ message: 'probe', content: '', sha: FAKE_SHA, branch: BRANCH })
+      }).then(function (res) {
+        return res.json().catch(function () { return {}; }).then(function (j) {
+          // 409 或「does not match」= 权限过了，只是 sha 不对，正是我们要的结果
+          if (res.status === 409 || /does not match/i.test(j.message || '')) return true;
+          if (res.ok) throw new Error('写权限探测没按预期返回，先别用这个 token');
+          throw new Error(friendly(res.status, j.message));
+        });
+      });
+    });
+  }
+
+  // 验证 token 是不是真的能写这个仓库
   function verifyToken(token) {
     return fetch(API + '/repos/' + REPO_OWNER + '/' + REPO_NAME, {
       headers: ghHeaders(token)
     }).then(function (res) {
-      if (res.status === 401) throw new Error('token 无效或已过期');
-      if (res.status === 404) throw new Error('这个 token 看不到 ' + REPO_OWNER + '/' + REPO_NAME + '，检查一下仓库有没有勾选');
-      if (!res.ok) throw new Error('GitHub 返回 ' + res.status);
-      return res.json();
-    }).then(function (repo) {
-      if (!repo.permissions || !repo.permissions.push) {
-        throw new Error('这个 token 只能读不能写，Contents 权限要选 Read and write');
-      }
-      return true;
+      if (!res.ok) throw new Error(friendly(res.status, ''));
+      return probeWrite(token);
     });
   }
 
@@ -175,7 +214,7 @@
     }).then(function (res) {
       if (!res.ok) {
         return res.json().catch(function () { return {}; }).then(function (j) {
-          throw new Error(j.message || ('GitHub 返回 ' + res.status));
+          throw new Error(friendly(res.status, j.message));
         });
       }
       return res.json();
