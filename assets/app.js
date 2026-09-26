@@ -805,6 +805,7 @@
     $('set-token').value = '';
     $('set-token').placeholder = on ? '已保存，要换就填新的' : 'github_pat_…';
     $('set-forget').hidden = !on;
+    $('set-test').hidden = !on;
     $('set-err').hidden = true;
     document.body.classList.toggle('can-write', on);
   }
@@ -832,6 +833,22 @@
       btn.disabled = false;
       btn.textContent = '存下来';
       showErr('set-err', err.message);
+    });
+  });
+
+  // 拿已经存着的 token 探一次写权限，省得靠「写一篇试试」才知道通没通
+  $('set-test').addEventListener('click', function () {
+    var b = $('set-test');
+    b.disabled = true;
+    b.textContent = '测试中…';
+    $('set-err').hidden = true;
+    Store.verifyToken(Store.getToken()).then(function () {
+      toast('通了，现在能写');
+    }).catch(function (err) {
+      showErr('set-err', err.message);
+    }).then(function () {
+      b.disabled = false;
+      b.textContent = '测一下';
     });
   });
 
